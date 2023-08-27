@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using RestServiceProject.Models;
 
 namespace RestServiceProject.Controllers;
@@ -60,6 +61,7 @@ public class UserController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authenticator]
     public IActionResult Delete(Guid id)
     {
         bool deleted = _userRepository.Delete(id);

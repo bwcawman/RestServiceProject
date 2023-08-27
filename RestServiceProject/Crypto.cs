@@ -17,7 +17,7 @@ public class Crypto
     {
         if (string.IsNullOrEmpty(plainText))
         {
-            throw new ArgumentNullException("plainText");
+            throw new ArgumentNullException(nameof(plainText));
         }
 
         string outStr;                   // Encrypted string to return
@@ -32,28 +32,20 @@ public class Crypto
             var encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
 
             // Create the streams used for encryption.
-            using (var msEncrypt = new MemoryStream())
+            using var msEncrypt = new MemoryStream();
+            msEncrypt.Write(BitConverter.GetBytes(aesAlg.IV.Length), 0, sizeof(int));
+            msEncrypt.Write(aesAlg.IV, 0, aesAlg.IV.Length);
+            using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
             {
-                // prepend the IV
-                msEncrypt.Write(BitConverter.GetBytes(aesAlg.IV.Length), 0, sizeof(int));
-                msEncrypt.Write(aesAlg.IV, 0, aesAlg.IV.Length);
-                using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
-                {
-                    using (var swEncrypt = new StreamWriter(csEncrypt))
-                    {
-                        swEncrypt.Write(plainText);
-                    }
-                }
-                outStr = Convert.ToBase64String(msEncrypt.ToArray());
+                using var swEncrypt = new StreamWriter(csEncrypt);
+                swEncrypt.Write(plainText);
             }
+            outStr = Convert.ToBase64String(msEncrypt.ToArray());
         }
         finally
         {
             // Clear the RijndaelManaged object.
-            if (aesAlg != null)
-            {
-                aesAlg.Clear();
-            }
+            aesAlg?.Clear();
         }
         // Return the encrypted bytes from the memory stream.
         return outStr;
@@ -68,7 +60,7 @@ public class Crypto
     {
         if (string.IsNullOrEmpty(cipherText))
         {
-            throw new ArgumentNullException("cipherText");
+            throw new ArgumentNullException(nameof(cipherText));
         }
 
         RijndaelManaged aesAlg = null;
@@ -80,35 +72,26 @@ public class Crypto
 
             // Create the streams used for decryption.
             var bytes = Convert.FromBase64String(cipherText);
-            using (var msDecrypt = new MemoryStream(bytes))
-            {
-                // Create a RijndaelManaged object with the specified key and IV.
-                aesAlg = new RijndaelManaged();
-                aesAlg.Key = key.GetBytes(aesAlg.KeySize / 8);
+            using var msDecrypt = new MemoryStream(bytes);
+            // Create a RijndaelManaged object with the specified key and IV.
+            aesAlg = new RijndaelManaged();
+            aesAlg.Key = key.GetBytes(aesAlg.KeySize / 8);
 
-                // Get the initialization vector from the encrypted stream
-                aesAlg.IV = ReadByteArray(msDecrypt);
+            // Get the initialization vector from the encrypted stream
+            aesAlg.IV = ReadByteArray(msDecrypt);
 
-                // Create a decrytor to perform the stream transform.
-                var decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
-                using (var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
-                {
-                    using (var srDecrypt = new StreamReader(csDecrypt))
-                    {
-                        // Read the decrypted bytes from the decrypting stream
-                        // and place them in a string.
-                        plaintext = srDecrypt.ReadToEnd();
-                    }
-                }
-            }
+            // Create a decrytor to perform the stream transform.
+            var decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+            using var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read);
+            using var srDecrypt = new StreamReader(csDecrypt);
+            // Read the decrypted bytes from the decrypting stream
+            // and place them in a string.
+            plaintext = srDecrypt.ReadToEnd();
         }
         finally
         {
             // Clear the RijndaelManaged object.
-            if (aesAlg != null)
-            {
-                aesAlg.Clear();
-            }
+            aesAlg?.Clear();
         }
         return plaintext;
     }

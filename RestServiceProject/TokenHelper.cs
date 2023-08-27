@@ -4,13 +4,9 @@ namespace RestServiceProject;
 
 public static class TokenHelper
 {
-    public static string GetToken(string userName, string password)
+    public static string GetToken(string email)
     {
-        var token = new Token
-        {
-            UserId = 10,
-            Expires = DateTime.UtcNow.AddMinutes(10),
-        };
+        var token = new Token { Email = email, Expires = DateTime.UtcNow.AddMinutes(1) };
         var jsonString = JsonSerializer.Serialize(token);
         var encryptedJsonString = Crypto.EncryptStringAES(jsonString);
         return encryptedJsonString;
@@ -20,10 +16,6 @@ public static class TokenHelper
     {
         var decryptedJsonString = Crypto.DecryptStringAES(token);
         var tokenObject = JsonSerializer.Deserialize<Token>(decryptedJsonString);
-        if (tokenObject.Expires < DateTime.UtcNow)
-        {
-            return null;
-        }
         return tokenObject;
     }
 }
